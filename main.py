@@ -1,7 +1,9 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Response
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 import sqlite3
+import io
+import pandas as pd
 
 app = FastAPI()
 
@@ -17,7 +19,7 @@ app.add_middleware(
 # ---------------- HOME ----------------
 @app.get("/")
 def home():
-    return {"message": "Olá, FastAPI"}
+    return FileResponse("home.html")
 
 # ---------------- FRONT ----------------
 @app.get("/menu")
@@ -26,32 +28,186 @@ def menu():
 
 # ---------------- BUSCA ----------------
 @app.get("/buscar")
-def buscar(q: str):
+def buscar(q: str, limit: int = 1000, offset: int = 0):
+
+    # Divide por vírgula e remove espaços
+    termos = [t.strip() for t in q.split(",") if t.strip()]
+
+    if not termos:
+        return {"total": 0, "data": []}
+
+    con = sqlite3.connect("clientes.db")
+    con.row_factory = sqlite3.Row
+    cursor = con.cursor()
+
+    # Monta os WHEREs dinamicamente
+    where = " OR ".join(
+        "(nome LIKE ? OR documento LIKE ? OR ccb LIKE ? OR operacao LIKE ?)"
+        for _ in termos
+    )
+
+    params = []
+    for termo in termos:
+        like = f"%{termo}%"
+        params.extend([like, like, like, like])
+
+    # COUNT
+    cursor.execute(
+        f"""
+        SELECT COUNT(*)
+        FROM clientes
+        WHERE {where}
+        """,
+        params,
+    )
+
+    total = cursor.fetchone()[0]
+
+    # SELECT
+    cursor.execute(
+        f"""
+        SELECT originador, fundo, operacao, cessao, ccb, documento, nome
+        FROM clientes
+        WHERE {where}
+        LIMIT ? OFFSET ?
+        """,
+        params + [limit, offset],
+    )
+
+    rows = cursor.fetchall()
+    con.close()
+
+    return {
+        "total": total,
+        "data": [dict(r) for r in rows]
+    }
+
+
+
+@app.get("/exportar")
+def exportar(q: str):
+
+    con = sqlite3.connect("clientes.db")
+
+    query = """
+        SELECT originador, fundo, operacao, cessao, ccb, documento, nome
+        FROM clientes
+        WHERE nome LIKE ?
+           OR documento LIKE ?
+           OR ccb LIKE ?
+           OR operacao LIKE ?
+    """
+
+    df = pd.read_sql_query(query, con, params=(
+        f"%{q}%", f"%{q}%", f"%{q}%", f"%{q}%"
+    ))
+
+    con.close()
+
+    output = io.BytesIO()
+
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False, sheet_name="resultado")
+
+    output.seek(0)
+
+    return Response(
+        content=output.read(),
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={
+            "Content-Disposition": f"attachment; filename=buscapé_resultado.xlsx"
+        }
+    )
+
+
+
+@app.get("/consulta")
+def consulta():
+    return FileResponse("consulta.html")
+
+@app.get("/relatorios")
+def relatorios():
+    return FileResponse("relatorios.html")
+
+# ===
+
+@app.get("/ops")
+def listar_operacoes():
 
     con = sqlite3.connect("clientes.db")
     cursor = con.cursor()
 
     cursor.execute("""
-        SELECT originador, fundo, operacao, cliente, documento, contrato, cessao
+        SELECT DISTINCT operacao
         FROM clientes
-        WHERE cliente LIKE ?
-           OR documento LIKE ?
-           OR contrato LIKE ?
-           OR originador LIKE ?
-    """, (f"%{q}%", f"%{q}%", f"%{q}%", f"%{q}%"))
+        ORDER BY operacao
+    """)
 
-    rows = cursor.fetchall()
+    data = [r[0] for r in cursor.fetchall()]
     con.close()
 
-    return [
-        {
-            "originador": r[0],
-            "fundo": r[1],
-            "operacao": r[2],
-            "cliente": r[3],
-            "documento": r[4],
-            "contrato": r[5],
-            "cessao": r[6],
-        }
-        for r in rows
-    ]
+    return data
+
+
+
+@app.get("/cessoes")
+def listar_cessoes(operacao: str):
+
+    con = sqlite3.connect("clientes.db")
+    cursor = con.cursor()
+
+    cursor.execute("""
+        SELECT DISTINCT cessao
+        FROM clientes
+        WHERE operacao = ?
+        ORDER BY CAST(cessao AS INTEGER)
+    """, (operacao,))
+
+    data = [r[0] for r in cursor.fetchall()]
+    con.close()
+
+    return data
+
+
+
+@app.post("/relatorio/exportar")
+def exportar_relatorio(payload: dict):
+
+    operacao = payload["operacao"]
+    cessoes = payload["cessoes"]
+    colunas = payload["colunas"]
+
+    con = sqlite3.connect("clientes.db")
+
+    base_query = f"""
+        SELECT {", ".join(colunas)}
+        FROM clientes
+        WHERE operacao = ?
+    """
+
+    params = [operacao]
+
+    if cessoes:
+        placeholders = ",".join(["?"] * len(cessoes))
+        base_query += f" AND cessao IN ({placeholders})"
+        params += cessoes
+
+    chunk_size = 250000
+    chunks = pd.read_sql_query(base_query, con, params=params, chunksize=chunk_size)
+
+    output = io.BytesIO()
+
+    with pd.ExcelWriter(output, engine="openpyxl") as writer:
+
+        for i, chunk in enumerate(chunks):
+            sheet_name = f"parte_{i+1}"
+            chunk.to_excel(writer, index=False, sheet_name=sheet_name)
+
+    con.close()
+    output.seek(0)
+
+    return Response(
+        content=output.read(),
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": "attachment; filename=relatorio.xlsx"}
+    )
