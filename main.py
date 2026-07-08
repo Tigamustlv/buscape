@@ -87,27 +87,38 @@ def buscar(q: str, limit: int = 1000, offset: int = 0):
 @app.get("/exportar")
 def exportar(q: str):
 
+    termos = [t.strip() for t in q.split(",") if t.strip()]
+
+    if not termos:
+        return {"erro": "Consulta vazia"}
+
     con = sqlite3.connect("clientes.db")
 
-    query = """
+    where = " OR ".join(
+        "(nome LIKE ? OR documento LIKE ? OR ccb LIKE ? OR operacao LIKE ?)"
+        for _ in termos
+    )
+
+    params = []
+
+    for termo in termos:
+        like = f"%{termo}%"
+        params.extend([like, like, like, like])
+
+    query = f"""
         SELECT originador, fundo, operacao, cessao, ccb, documento, nome
         FROM clientes
-        WHERE nome LIKE ?
-           OR documento LIKE ?
-           OR ccb LIKE ?
-           OR operacao LIKE ?
+        WHERE {where}
     """
 
-    df = pd.read_sql_query(query, con, params=(
-        f"%{q}%", f"%{q}%", f"%{q}%", f"%{q}%"
-    ))
-
-    con.close()
+    df = pd.read_sql_query(query, con, params=params)
 
     output = io.BytesIO()
 
-    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+    with pd.ExcelWriter(output, engine="openpyxl") as writer:
         df.to_excel(writer, index=False, sheet_name="resultado")
+
+    con.close()
 
     output.seek(0)
 
@@ -115,7 +126,7 @@ def exportar(q: str):
         content=output.read(),
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={
-            "Content-Disposition": f"attachment; filename=buscapé_resultado.xlsx"
+            "Content-Disposition": "attachment; filename=buscape_resultado.xlsx"
         }
     )
 
