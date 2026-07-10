@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Relatórios - Buscapé</title>
+<link rel="icon" type="image/x-icon" href="{{ url_for('static', path='images/icon.ico') }}">
+
+<style>
+
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:Segoe UI, Arial, sans-serif;
+}
+
+body{
+    background:#f5f7fa;
+}
+
+header{
+    background:#0d6efd;
+    color:white;
+    height:70px;
+    display:flex;
+    align-items:center;
+    padding:0 40px;
+    font-size:24px;
+    font-weight:600;
+    box-shadow:0 2px 10px rgba(0,0,0,.15);
+}
+
+.container{
+    width:95%;
+    max-width:1200px;
+    margin:40px auto;
+}
+
+.card{
+    background:white;
+    border-radius:10px;
+    box-shadow:0 5px 15px rgba(0,0,0,.08);
+    padding:30px;
+}
+
+h2{
+    margin-bottom:25px;
+    color:#333;
+}
+
+label{
+    display:block;
+    margin-top:20px;
+    margin-bottom:8px;
+    font-weight:600;
+    color:#333;
+}
+
+select{
+    width:100%;
+    padding:14px;
+    border:1px solid #ccc;
+    border-radius:8px;
+    font-size:16px;
+    background:white;
+    transition:.3s;
+}
+
+select:focus{
+    outline:none;
+    border-color:#0d6efd;
+}
+
+.colunas{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+    gap:10px;
+    margin-top:10px;
+}
+
+.colunas label{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    margin:0;
+    font-weight:400;
+}
+
+.colunas input[type="checkbox"]{
+    width:18px;
+    height:18px;
+}
+
+#cessoescampo{
+    width:100%;
+    min-height:220px;
+    padding:10px;
+    border:1px solid #ccc;
+    border-radius:8px;
+    font-size:15px;
+}
+
+button{
+    padding:14px 28px;
+    border:none;
+    border-radius:8px;
+    cursor:pointer;
+    font-size:16px;
+    transition:.3s;
+}
+
+button:hover{
+    opacity:.95;
+}
+
+.btn-exportar{
+    margin-top:30px;
+    background:#198754;
+    color:white;
+}
+
+.btn-exportar:hover{
+    background:#157347;
+}
+
+.btn-home{
+    position:fixed;
+    top:15px;
+    right:15px;
+    padding:10px 18px;
+    background:#6c757d;
+    color:white;
+    border:none;
+    border-radius:8px;
+    cursor:pointer;
+    font-size:15px;
+    transition:.3s;
+    z-index:999;
+}
+
+.btn-home:hover{
+    background:#5c636a;
+}
+
+.cessoes-box{
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px;
+    margin-top:10px;
+}
+
+.cessao-item{
+    padding:8px 14px;
+    border-radius:20px;
+    background:#eef2f7;
+    border:1px solid #d0d7de;
+    cursor:pointer;
+    user-select:none;
+    transition:.25s;
+    font-size:14px;
+}
+
+.cessao-item:hover{
+    background:#dce8ff;
+}
+
+.cessao-item.selected{
+    background:#0d6efd;
+    color:white;
+    border-color:#0d6efd;
+}
+
+</style>
+</head>
+
+
+
+<body>
+
+<button class="btn-home" onclick="window.location.href='/'">
+    Home
+</button>
+
+
+
+<header>Relatórios Buscapé</header>
+
+
+<div class="container">
+    <div class="card">
+
+        <h2>Relatórios</h2>
+
+        <label>Operação</label>
+        <select id="operacao" onchange="carregarCessoes()">
+            <option value="">Selecione</option>
+        </select>
+
+        <label>Cessões (multi seleção)</label>
+
+        <select id="cessoescampo" multiple size="10" style="width:100%;padding:10px;">
+        </select>
+
+        <label>Colunas</label>
+
+        <div class="colunas">
+            <label><input type="checkbox" value="originador" checked> Originador</label>
+            <label><input type="checkbox" value="fundo" checked> Fundo</label>
+            <label><input type="checkbox" value="operacao" checked> Operação</label>
+            <label><input type="checkbox" value="cessao" checked> Cessão</label>
+            <label><input type="checkbox" value="ccb" checked> CCB</label>
+            <label><input type="checkbox" value="documento" checked> Documento</label>
+            <label><input type="checkbox" value="nome" checked> Nome</label>
+        </div>
+
+        <button onclick="gerar()">⬇ Exportar Excel</button>
+
+    </div>
+</div>
+
+
+
+<script>
+
+let cessaoSelecionadas = [];
+
+async function carregarOps(){
+
+    const res = await fetch("http://127.0.0.1:8000/ops");
+    const data = await res.json();
+
+    const select = document.getElementById("operacao");
+
+    select.innerHTML = `<option value="">Selecione uma operação</option>`;
+
+    data.forEach(op => {
+        select.innerHTML += `<option value="${op}">${op}</option>`;
+    });
+}
+
+async function carregarCessoes(){
+
+    const op = document.getElementById("operacao").value;
+
+    if(!op) return;
+
+    const res = await fetch(
+        `http://127.0.0.1:8000/cessoes?operacao=${encodeURIComponent(op)}`
+    );
+
+    const data = await res.json();
+
+    const div = document.getElementById("cessoescampo");
+
+    div.innerHTML = "";
+    cessaoSelecionadas = [];
+
+    // 🔥 opção "TODAS"
+    const all = document.createElement("div");
+    all.className = "cessao-item";
+    all.innerText = "Todas as cessões";
+
+    all.onclick = () => {
+
+        const items = document.querySelectorAll(".cessao-item:not(.all)");
+
+        const allSelected = all.classList.contains("selected");
+
+        if(allSelected){
+            all.classList.remove("selected");
+            cessaoSelecionadas = [];
+            items.forEach(i => i.classList.remove("selected"));
+        } else {
+            all.classList.add("selected");
+            cessaoSelecionadas = ["ALL"];
+
+            items.forEach(i => i.classList.add("selected"));
+        }
+    };
+
+    div.appendChild(all);
+
+    // 🔥 cessões individuais
+    data.forEach(c => {
+
+        const el = document.createElement("div");
+        el.className = "cessao-item";
+        el.innerText = c;
+
+        el.onclick = () => {
+
+            // se estava em "todas", remove
+            const allEl = document.querySelector(".cessao-item");
+
+            if(allEl.classList.contains("selected")){
+                allEl.classList.remove("selected");
+                cessaoSelecionadas = [];
+            }
+
+            if(cessaoSelecionadas.includes(c)){
+                cessaoSelecionadas = cessaoSelecionadas.filter(x => x !== c);
+                el.classList.remove("selected");
+            } else {
+                cessaoSelecionadas.push(c);
+                el.classList.add("selected");
+            }
+
+        };
+
+        div.appendChild(el);
+    });
+}
+
+async function gerar(){
+
+    const operacao = document.getElementById("operacao").value;
+
+    if(!operacao){
+        alert("Selecione uma operação");
+        return;
+    }
+
+    const colunas = [...document.querySelectorAll("input[type=checkbox]:checked")]
+        .map(e => e.value);
+
+    // 🔥 se ALL, manda vazio (backend entende como todas)
+    let cessoes = cessaoSelecionadas;
+
+    if(cessoes.includes("ALL")){
+        cessoes = [];
+    }
+
+    const res = await fetch("http://127.0.0.1:8000/relatorio/exportar", {
+        method:"POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({
+            operacao,
+            cessoes,
+            colunas
+        })
+    });
+
+    const blob = await res.blob();
+
+    const url = window.URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "relatorio.xlsx";
+    a.click();
+}
+
+carregarOps();
+
+</script>
+
+</body>
+</html>

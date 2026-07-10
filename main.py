@@ -1,11 +1,20 @@
-from fastapi import FastAPI, Response
+from fastapi import FastAPI, Response, Request
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.templating import Jinja2Templates
+from fastapi.staticfiles import StaticFiles
+from rotas import login
+
 import sqlite3
 import io
 import pandas as pd
 
 app = FastAPI()
+
+templates = Jinja2Templates(directory="templates")
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+app.include_router(login.router)
 
 # CORS (front pode chamar API)
 app.add_middleware(
@@ -18,13 +27,21 @@ app.add_middleware(
 
 # ---------------- HOME ----------------
 @app.get("/")
-def home():
-    return FileResponse("home.html")
+async def front_page(request: Request):
+    return templates.TemplateResponse(
+        request=request,
+        name="index.html",
+        context={
+            "titulo": "Buscapé",
+            "versao": "1.0.0",
+        }
+    )
+
 
 # ---------------- FRONT ----------------
-@app.get("/menu")
-def menu():
-    return FileResponse("index.html")
+#@app.get("/menu")
+#def menu():
+#    return FileResponse("index.html")
 
 # ---------------- BUSCA ----------------
 @app.get("/buscar")
@@ -133,12 +150,41 @@ def exportar(q: str):
 
 
 @app.get("/consulta")
-def consulta():
-    return FileResponse("consulta.html")
+async def consulta(request: Request):
+    return templates.TemplateResponse(
+        name="consulta.html",
+        request=request,
+        context={
+            "request": request,
+            "titulo": "Consulta",
+        }
+    )
+
 
 @app.get("/relatorios")
-def relatorios():
-    return FileResponse("relatorios.html")
+async def relatorios(request: Request):
+    return templates.TemplateResponse(
+        name="relatorios.html",
+        request=request,
+        context={
+            "request": request,
+            "titulo": "Relatórios",
+        }
+    )
+
+
+@app.get("/")
+async def front_page(request: Request):
+    return templates.TemplateResponse(
+        request=request,
+        name="index.html",
+        context={
+            "titulo": "Buscapé",
+            "versao": "1.0.0",
+        }
+    )
+
+
 
 # ===
 
