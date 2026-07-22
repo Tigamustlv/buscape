@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Calculadora Saldo Devedor v9</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+<style>
+
+
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:Segoe UI, Arial, sans-serif;
+}
+
+body{
+    background:#f5f7fa;
+}
+
+
+header{
+    background:#0d6efd;
+    color:white;
+    height:70px;
+    display:flex;
+    align-items:center;
+    padding:0 40px;
+    font-size:24px;
+    font-weight:600;
+    box-shadow:0 2px 10px rgba(0,0,0,.15);
+}
+
+
+.container{
+    width:95%;
+    max-width:1200px;
+    margin:40px auto;
+}
+
+
+.card{
+    background:white;
+    border-radius:10px;
+    box-shadow:0 5px 15px rgba(0,0,0,.08);
+    padding:30px;
+    margin-bottom:20px;
+}
+
+
+h2{
+    margin-bottom:20px;
+    color:#333;
+}
+
+
+.grid{
+    display:block;
+}
+
+
+label{
+    display:block;
+    margin-top:15px;
+    margin-bottom:6px;
+    font-weight:600;
+    color:#333;
+}
+
+
+input,select{
+    width:100%;
+    padding:14px;
+    border:1px solid #ccc;
+    border-radius:8px;
+    font-size:16px;
+}
+
+
+input:focus{
+    outline:none;
+    border-color:#0d6efd;
+}
+
+
+button{
+    padding:14px 28px;
+    background:#0d6efd;
+    color:white;
+    border:none;
+    border-radius:8px;
+    cursor:pointer;
+    font-size:16px;
+    transition:.3s;
+}
+
+
+button:hover{
+    background:#0b5ed7;
+}
+
+
+button.secondary{
+    background:#6c757d;
+}
+
+
+button.success{
+    background:#198754;
+}
+
+
+.btns{
+    display:flex;
+    gap:15px;
+    margin-top:20px;
+}
+
+
+.options{
+    display:flex;
+    gap:15px;
+}
+
+
+.option{
+    padding:12px;
+    border:1px solid #ddd;
+    border-radius:8px;
+    background:#fafafa;
+}
+
+
+.option input{
+    width:auto;
+}
+
+
+.hint{
+    margin-top:8px;
+    color:#777;
+    font-size:14px;
+}
+
+
+.formula{
+    margin-top:20px;
+    background:#f4f8ff;
+    border:1px solid #dbe7ff;
+    padding:15px;
+    border-radius:8px;
+}
+
+
+.status{
+    margin-top:15px;
+    padding:15px;
+    border-radius:8px;
+    background:#f8f9fa;
+    border:1px solid #ddd;
+}
+
+
+.status.ok{
+    background:#d1e7dd;
+    color:#0f5132;
+}
+
+
+.status.err{
+    background:#f8d7da;
+    color:#842029;
+}
+
+
+.progress-track{
+    height:12px;
+    background:#ddd;
+    border-radius:8px;
+    overflow:hidden;
+}
+
+
+.progress-bar{
+    height:100%;
+    background:#0d6efd;
+}
+
+
+table{
+    width:100%;
+    margin-top:20px;
+    border-collapse:collapse;
+}
+
+
+thead{
+    background:#0d6efd;
+    color:white;
+}
+
+
+th,td{
+    padding:14px;
+    text-align:left;
+    border-bottom:1px solid #e5e5e5;
+}
+
+
+tbody tr:hover{
+    background:#f4f8ff;
+}
+
+
+a{
+    color:#0d6efd;
+    text-decoration:none;
+    font-weight:600;
+}
+
+
+a:hover{
+    text-decoration:underline;
+}
+
+
+.home-btn{
+
+    position:fixed;
+    top:15px;
+    right:15px;
+    padding:10px 15px;
+    border:none;
+    border-radius:8px;
+    background:#6c757d;
+    color:white;
+    cursor:pointer;
+    z-index:999;
+
+}
+
+
+</style></style>
+</head>
+<body>
+
+    <button onclick="window.location.href='/'"
+class="home-btn">
+Home
+</button>
+
+
+<header>
+Calculadora Saldo Devedor
+</header>
+
+<div class="container">
+
+<div class="card">
+
+<h2>Calculadora Saldo Devedor</h2>
+
+<p style="color:#777">
+Base 360 ou 252, com taxa mensal ou anual.
+</p>
+ 
+  <div class="grid">
+<div class="card">
+<h2>1. Arquivos</h2>
+<label>Planilha de dados</label>
+<input type="file" id="fileInput" accept=".xlsx,.xls,.csv">
+<div class="btns"><button class="secondary" id="folderBtn">Escolher pasta para salvar</button></div>
+<label>Pasta selecionada</label>
+<input id="folderName" value="Nenhuma pasta selecionada" readonly>
+<div class="hint">Sem pasta selecionada, o retorno será baixado pelo navegador.</div>
+</div>
+ 
+    <div class="card">
+<h2>2. Parâmetros</h2>
+<label>Data do Saldo Devedor</label>
+<input type="date" id="saldoDate">
+ 
+      <label>Base de cálculo</label>
+<div class="options">
+<div class="option"><label><input type="radio" name="base" value="360" checked> 360 dias</label></div>
+<div class="option"><label><input type="radio" name="base" value="252"> 252 dias úteis</label></div>
+</div>
+ 
+      <label>Periodicidade da taxa</label>
+<div class="options">
+<div class="option"><label><input type="radio" name="periodicidade" value="MENSAL" checked> Mensal (a.m.)</label></div>
+<div class="option"><label><input type="radio" name="periodicidade" value="ANUAL"> Anual (a.a.)</label></div>
+</div>
+ 
+      <label>Taxa manual (opcional)</label>
+<input type="text" id="taxaManual" placeholder="Ex.: 1,80% ou 0,018">
+<div class="hint">A taxa da planilha, quando existente, tem prioridade. A periodicidade selecionada será aplicada tanto à taxa da planilha quanto à manual.</div>
+ 
+      <div class="formula" id="formulaBox"></div>
+<div class="btns"><button class="success" id="processBtn">Gerar arquivo retorno</button></div>
+</div>
+ 
+    <div class="card full">
+<h2>Resultado</h2>
+<div id="status" class="status">Aguardando a planilha.</div>
+<div id="progressWrap" class="progress-wrap">
+<div class="progress-label"><span id="progressText">Processando...</span><span id="progressPct">0%</span></div>
+<div class="progress-track"><div id="progressBar" class="progress-bar"></div></div>
+</div>
+<div id="preview"></div>
+</div>
+</div>
+</div>
+ 
+<script>
+let folderHandle = null;
+ 
+function normalizeHeader(v){return String(v??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().trim().replace(/[^A-Z0-9]/g,'')}
+function parseNumber(v){
+  if(v===null||v===undefined||v==='') return null;
+  if(typeof v==='number') return Number.isFinite(v)?v:null;
+  let s=String(v).trim().replace(/R\$/gi,'').replace(/%/g,'').replace(/\s/g,'');
+  if(!s) return null;
+  if(s.includes(',')&&s.includes('.')) s=s.replace(/\./g,'').replace(',','.');
+  else if(s.includes(',')) s=s.replace(',','.');
+  const n=Number(s); return Number.isFinite(n)?n:null;
+}
+function parseRate(v){const n=parseNumber(v);if(n===null)return null;return Math.abs(n)>=1?n/100:n}
+function parseDate(v){
+  if(v instanceof Date&&!isNaN(v)) return new Date(v.getFullYear(),v.getMonth(),v.getDate());
+  if(typeof v==='number'){const d=XLSX.SSF.parse_date_code(v);return d?new Date(d.y,d.m-1,d.d):null}
+  if(!v)return null; const s=String(v).trim();
+  let m=s.match(/^(\d{4})-(\d{2})-(\d{2})/); if(m)return new Date(+m[1],+m[2]-1,+m[3]);
+  m=s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/); if(m){let y=+m[3];if(y<100)y+=2000;return new Date(y,+m[2]-1,+m[1])}
+  const d=new Date(s); return isNaN(d)?null:new Date(d.getFullYear(),d.getMonth(),d.getDate());
+}
+function dateKey(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}
+function addDays(d,n){const x=new Date(d);x.setDate(x.getDate()+n);return x}
+function easterDate(year){
+  const a=year%19,b=Math.floor(year/100),c=year%100,d=Math.floor(b/4),e=b%4,f=Math.floor((b+8)/25),g=Math.floor((b-f+1)/3);
+  const h=(19*a+b-d-g+15)%30,i=Math.floor(c/4),k=c%4,l=(32+2*e+2*i-h-k)%7,m=Math.floor((a+11*h+22*l)/451);
+  const month=Math.floor((h+l-7*m+114)/31),day=((h+l-7*m+114)%31)+1; return new Date(year,month-1,day);
+}
+function holidaysForYear(year){
+  const e=easterDate(year); const set=new Set([
+    `${year}-01-01`,`${year}-04-21`,`${year}-05-01`,`${year}-09-07`,`${year}-10-12`,`${year}-11-02`,`${year}-11-15`,`${year}-11-20`,`${year}-12-25`,
+    dateKey(addDays(e,-48)),dateKey(addDays(e,-47)),dateKey(addDays(e,-2)),dateKey(addDays(e,60))
+  ]); return set;
+}
+function businessDays(start,end){
+  if(end<=start) return 0; let count=0; let d=new Date(start); d.setDate(d.getDate()+1);
+  const cache=new Map();
+  while(d<=end){
+    const dow=d.getDay();
+    if(!cache.has(d.getFullYear())) cache.set(d.getFullYear(),holidaysForYear(d.getFullYear()));
+    if(dow!==0&&dow!==6&&!cache.get(d.getFullYear()).has(dateKey(d))) count++;
+    d.setDate(d.getDate()+1);
+  }
+  return count;
+}
+function calendarDays(start,end){return Math.max(0,Math.round((end-start)/86400000))}
+function round2(n){return Math.round((n+Number.EPSILON)*100)/100}
+function detectColumns(headers){
+  const n=headers.map(normalizeHeader); const find=c=>n.findIndex(h=>c.includes(h));
+  return {
+    norm:n,
+    vencIdx:find(['DATAVENCIMENTOORIGINAL','VENCIMENTO','DATAVENCIMENTO','DTVENCIMENTO']),
+    valorIdx:find(['VALORNOMINAL','VALORPARCELA','VRPARCELA','VALORDAPARCELA','VLPARCELA']),
+    taxaIdx:find(['TAXA','TAXACESSAO','TAXANOMINALAM','TAXANOMINALAA','TAXAAM','TAXAAA']),
+    nomeIdx:find(['NOMESACADO','NOMECLIENTE','NOME']),
+    docIdx:find(['DOCSACADO','CPFCNPJ','CPF','CNPJ','DOCUMENTOSACADO']),
+    contratoIdx:find(['NUDOCUMENTO','NUMERODOCUMENTO','NUMEROCONTRATO','CONTRATO','CODCONTRATO'])
+  };
+}
+function calcVP(vf,taxa,start,end,base,period){
+  if(start>=end) return vf;
+  if(base==='360'){
+    const dias=calendarDays(start,end);
+    const divisor=period==='MENSAL'?30:360;
+    return vf/Math.pow(1+taxa,dias/divisor);
+  }
+  const du=businessDays(start,end);
+  const divisor=period==='MENSAL'?21:252;
+  return vf/Math.pow(1+taxa,du/divisor);
+}
+function setStatus(t,type=''){const e=document.getElementById('status');e.className='status'+(type?' '+type:'');e.textContent=t}
+function setProgress(cur,total,text='Processando...'){
+  const p=total?Math.min(100,Math.round(cur/total*100)):0;document.getElementById('progressWrap').classList.add('active');
+  document.getElementById('progressText').textContent=text;document.getElementById('progressPct').textContent=p+'%';document.getElementById('progressBar').style.width=p+'%';
+}
+function hideProgress(){document.getElementById('progressWrap').classList.remove('active')}
+function yieldBrowser(){return new Promise(r=>setTimeout(r,0))}
+function selected(name){return document.querySelector(`input[name="${name}"]:checked`).value}
+function updateFormula(){
+  const b=selected('base'),p=selected('periodicidade');
+  let text='';
+  if(b==='360'&&p==='MENSAL') text='VP = VF / (1 + taxa_mensal)^((data final - data inicial) / 30)';
+  if(b==='360'&&p==='ANUAL') text='VP = VF / (1 + taxa_anual)^((data final - data inicial) / 360)';
+  if(b==='252'&&p==='MENSAL') text='VP = VF / (1 + taxa_mensal)^(dias úteis / 21)';
+  if(b==='252'&&p==='ANUAL') text='VP = VF / (1 + taxa_anual)^(dias úteis / 252)';
+  document.getElementById('formulaBox').textContent=text;
+}
+document.querySelectorAll('input[name="base"],input[name="periodicidade"]').forEach(e=>e.addEventListener('change',updateFormula));updateFormula();
+ 
+async function ensureFolderPermission(h){if(!h)return false;const o={mode:'readwrite'};if(await h.queryPermission(o)==='granted')return true;return await h.requestPermission(o)==='granted'}
+async function saveBlob(blob,name){
+  if(folderHandle&&await ensureFolderPermission(folderHandle)){
+    const h=await folderHandle.getFileHandle(name,{create:true});const w=await h.createWritable({keepExistingData:false});await w.write(blob);await w.close();return 'pasta';
+  }
+  const a=document.createElement('a');const u=URL.createObjectURL(blob);a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),1000);return 'download';
+}
+function preview(rows,headers){
+  const cols=headers.slice(0,7);if(!cols.includes('SALDO_DEVEDOR'))cols.push('SALDO_DEVEDOR');if(!cols.includes('DESCONTO DE JUROS'))cols.push('DESCONTO DE JUROS');
+  let h='<table><thead><tr>'+cols.map(x=>`<th>${x}</th>`).join('')+'</tr></thead><tbody>';
+  rows.slice(0,8).forEach(r=>h+='<tr>'+cols.map(x=>`<td>${r[x]??''}</td>`).join('')+'</tr>');h+='</tbody></table>';document.getElementById('preview').innerHTML=h;
+}
+ 
+function excelDate(d){
+  return new Date(d.getFullYear(),d.getMonth(),d.getDate());
+}
+function styleExcelSheet(ws, headers, rowCount, highlightedHeaders, dateHeaders, moneyHeaders){
+  const blue='00A6D6';
+  const white='FFFFFF';
+  const borderColor='D9E2F3';
+  const normalizedHighlights=new Set(highlightedHeaders.map(normalizeHeader));
+  const normalizedDates=new Set(dateHeaders.map(normalizeHeader));
+  const normalizedMoney=new Set(moneyHeaders.map(normalizeHeader));
+ 
+  headers.forEach((header,c)=>{
+    const address=XLSX.utils.encode_cell({r:0,c});
+    if(!ws[address]) return;
+    const highlighted=normalizedHighlights.has(normalizeHeader(header));
+    ws[address].s={
+      font:{bold:true,color:{rgb:highlighted?white:'000000'}},
+      fill:{patternType:'solid',fgColor:{rgb:highlighted?blue:'FFFFFF'}},
+      alignment:{horizontal:'center',vertical:'center',wrapText:true},
+      border:{
+        top:{style:'thin',color:{rgb:borderColor}},
+        bottom:{style:'thin',color:{rgb:borderColor}},
+        left:{style:'thin',color:{rgb:borderColor}},
+        right:{style:'thin',color:{rgb:borderColor}}
+      }
+    };
+  });
+ 
+  headers.forEach((header,c)=>{
+    const nh=normalizeHeader(header);
+    for(let r=1;r<rowCount;r++){
+      const address=XLSX.utils.encode_cell({r,c});
+      const cell=ws[address];
+      if(!cell) continue;
+      if(normalizedDates.has(nh) && cell.v instanceof Date){
+        cell.t='d';
+        cell.z='dd/mm/yyyy';
+      }
+      if(normalizedMoney.has(nh) && typeof cell.v==='number'){
+        cell.z='#,##0.00';
+      }
+    }
+  });
+ 
+  ws['!rows']=[{hpt:27}];
+  ws['!cols']=headers.map((h,c)=>{
+    let maxLen=Math.max(12,String(h||'').length+2);
+    const limit=Math.min(rowCount,300);
+    for(let r=1;r<limit;r++){
+      const cell=ws[XLSX.utils.encode_cell({r,c})];
+      if(!cell||cell.v===null||cell.v===undefined) continue;
+      const value=cell.v instanceof Date?'00/00/0000':String(cell.v);
+      maxLen=Math.max(maxLen,Math.min(42,value.length+2));
+    }
+    return {wch:maxLen};
+  });
+  ws['!autofilter']={ref:XLSX.utils.encode_range({s:{r:0,c:0},e:{r:Math.max(0,rowCount-1),c:Math.max(0,headers.length-1)}})};
+  ws['!freeze']={xSplit:0,ySplit:1,topLeftCell:'A2',activePane:'bottomLeft',state:'frozen'};
+}
+ 
+async function processFile(){
+  const btn=document.getElementById('processBtn');
+  try{
+    btn.disabled=true;setStatus('Lendo a planilha...');setProgress(0,100,'Preparando...');
+    const file=document.getElementById('fileInput').files[0];if(!file)throw new Error('Selecione a planilha de dados.');
+    const saldoDate=parseDate(document.getElementById('saldoDate').value);if(!saldoDate)throw new Error('Informe a data do saldo devedor.');
+    const base=selected('base'),period=selected('periodicidade'),manualRate=parseRate(document.getElementById('taxaManual').value);
+    const wb=XLSX.read(await file.arrayBuffer(),{type:'array',cellDates:true});
+    const sname=wb.SheetNames.find(n=>normalizeHeader(n).includes('SALDODEVEDOR')||normalizeHeader(n).includes('BASEANALITICA'))||wb.SheetNames[0];
+    const matrix=XLSX.utils.sheet_to_json(wb.Sheets[sname],{header:1,raw:true,defval:''});if(matrix.length<2)throw new Error('Planilha sem dados.');
+    const headers=matrix[0].map(x=>String(x??'').trim());const idx=detectColumns(headers);
+    if(idx.vencIdx<0)throw new Error('Não localizei a coluna de vencimento.');
+    if(idx.valorIdx<0)throw new Error('Não localizei a coluna de valor.');
+    if(idx.taxaIdx<0&&manualRate===null)throw new Error('Não localizei a taxa e nenhuma taxa manual foi informada.');
+ 
+    // Monta o layout de retorno sem duplicar colunas já existentes.
+    const outHeaders=[...headers];
+    const dataSaldoHeaderIndex=outHeaders.findIndex(h=>normalizeHeader(h)==='DATASALDO');
+    const saldoHeaderIndex=outHeaders.findIndex(h=>normalizeHeader(h)==='SALDODEVEDOR');
+    const descontoHeaderIndex=outHeaders.findIndex(h=>normalizeHeader(h)==='DESCONTODEJUROS');
+    const dataSaldoIdxOut=dataSaldoHeaderIndex>=0?dataSaldoHeaderIndex:(outHeaders.push('DATA_SALDO')-1);
+    const saldoIdxOut=saldoHeaderIndex>=0?saldoHeaderIndex:(outHeaders.push('SALDO_DEVEDOR')-1);
+    const descontoIdxOut=descontoHeaderIndex>=0?descontoHeaderIndex:(outHeaders.push('DESCONTO DE JUROS')-1);
+    const out=[outHeaders];const objs=[];let processed=0,errors=0,totalNom=0,totalSaldo=0,totalDesc=0;
+    const groups=new Map();const totalRows=matrix.length-1;
+    for(let i=1;i<matrix.length;i++){
+      const row=matrix[i];if(row.every(v=>v===''||v===null||v===undefined))continue;
+      const venc=parseDate(row[idx.vencIdx]),valor=parseNumber(row[idx.valorIdx]);
+      const sheetRate=idx.taxaIdx>=0?parseRate(row[idx.taxaIdx]):null;const taxa=sheetRate??manualRate;
+      let saldo='',desconto='';
+      if(venc&&valor!==null&&taxa!==null&&taxa>-1){
+        saldo=round2(calcVP(valor,taxa,saldoDate,venc,base,period));desconto=round2(valor-saldo);
+        totalNom+=valor;totalSaldo+=saldo;totalDesc+=desconto;
+      }else errors++;
+      // Preserva todos os dados originais e atualiza somente os campos calculados.
+      const newRow=[...row];
+      while(newRow.length<outHeaders.length)newRow.push('');
+      newRow[dataSaldoIdxOut]=excelDate(saldoDate);
+      newRow[saldoIdxOut]=saldo;
+      newRow[descontoIdxOut]=desconto;
+      out.push(newRow);processed++;
+      const obj={};outHeaders.forEach((h,j)=>obj[h]=newRow[j]);objs.push(obj);
+      const key=idx.contratoIdx>=0?String(row[idx.contratoIdx]??'').trim():`LINHA_${i}`;
+      if(!groups.has(key))groups.set(key,{nome:idx.nomeIdx>=0?row[idx.nomeIdx]:'',doc:idx.docIdx>=0?row[idx.docIdx]:'',contrato:idx.contratoIdx>=0?row[idx.contratoIdx]:'',nom:0,saldo:0,desc:0,primeiro:null,ultimo:null,taxa:idx.taxaIdx>=0?row[idx.taxaIdx]:(manualRate??'')});
+      const g=groups.get(key);if(valor!==null)g.nom+=valor;if(saldo!=='')g.saldo+=saldo;if(desconto!=='')g.desc+=desconto;
+      if(venc){if(!g.primeiro||venc<g.primeiro)g.primeiro=venc;if(!g.ultimo||venc>g.ultimo)g.ultimo=venc}
+      if(i%250===0||i===matrix.length-1){setProgress(i,totalRows,`Processando ${processed} linha(s)...`);setStatus(`Processando...\nLinhas processadas: ${processed}\nInconsistências: ${errors}`);await yieldBrowser()}
+    }
+ 
+    const outWb=XLSX.utils.book_new();
+    const ws=XLSX.utils.aoa_to_sheet(out,{cellDates:true});
+    styleExcelSheet(
+      ws,
+      outHeaders,
+      out.length,
+      ['SALDO_DEVEDOR','DESCONTO DE JUROS','DATA_SALDO'],
+      ['DATA_VENCIMENTO_ORIGINAL','VENCIMENTO','DATA_VENCIMENTO','DATA_SALDO'],
+      ['VALOR_NOMINAL','SALDO_DEVEDOR','DESCONTO DE JUROS']
+    );
+    XLSX.utils.book_append_sheet(outWb,ws,'Saldo Devedor');
+ 
+    const ch=['NOME_SACADO','DOC_SACADO','NU_DOCUMENTO','VALOR_NOMINAL','PRIMEIRO VENCIMENTO','ÚLTIMO_VENCIMENTO','TAXA_CESSAO','DATA_SALDO','SALDO_DEVEDOR','DESCONTO DE JUROS'];
+    const cr=[ch];
+    for(const g of groups.values()){
+      cr.push([
+        g.nome,g.doc,g.contrato,round2(g.nom),
+        g.primeiro?excelDate(g.primeiro):'',
+        g.ultimo?excelDate(g.ultimo):'',
+        g.taxa,excelDate(saldoDate),round2(g.saldo),round2(g.desc)
+      ]);
+    }
+    const wsConsolidado=XLSX.utils.aoa_to_sheet(cr,{cellDates:true});
+    styleExcelSheet(
+      wsConsolidado,
+      ch,
+      cr.length,
+      ['PRIMEIRO VENCIMENTO','ÚLTIMO_VENCIMENTO','DATA_SALDO','SALDO_DEVEDOR','DESCONTO DE JUROS'],
+      ['PRIMEIRO VENCIMENTO','ÚLTIMO_VENCIMENTO','DATA_SALDO'],
+      ['VALOR_NOMINAL','SALDO_DEVEDOR','DESCONTO DE JUROS']
+    );
+    XLSX.utils.book_append_sheet(outWb,wsConsolidado,'Consolidado');
+ 
+    const formula=document.getElementById('formulaBox').textContent;
+    const resumo=[['Data Saldo Devedor',excelDate(saldoDate)],['Base',base],['Periodicidade',period],['Fórmula',formula],['Linhas processadas',processed],['Inconsistências',errors],['Valor nominal total',round2(totalNom)],['Saldo devedor total',round2(totalSaldo)],['Desconto de juros total',round2(totalDesc)]];
+    const wsResumo=XLSX.utils.aoa_to_sheet(resumo,{cellDates:true});
+    if(wsResumo['B1']){wsResumo['B1'].t='d';wsResumo['B1'].z='dd/mm/yyyy';}
+    wsResumo['!cols']=[{wch:24},{wch:70}];
+    XLSX.utils.book_append_sheet(outWb,wsResumo,'Resumo Processamento');
+    const now=new Date();const name=`Retorno_Saldo_Devedor_${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}_${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}${String(now.getSeconds()).padStart(2,'0')}.xlsx`;
+    const blob=new Blob([XLSX.write(outWb,{bookType:'xlsx',type:'array'})],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    const mode=await saveBlob(blob,name);setProgress(100,100,'Concluído');setStatus(`Arquivo gerado com sucesso: ${name}\nDestino: ${mode==='pasta'?'pasta selecionada':'download do navegador'}\nLinhas processadas: ${processed}\nInconsistências: ${errors}\nSaldo devedor total: R$ ${totalSaldo.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}`,'ok');preview(objs,outHeaders);setTimeout(hideProgress,1800);
+  }catch(e){hideProgress();setStatus(e.message||String(e),'err')}finally{btn.disabled=false}
+}
+document.getElementById('folderBtn').addEventListener('click',async()=>{
+  try{if(!window.showDirectoryPicker)throw new Error('Este navegador não permite escolher pasta. O arquivo será baixado normalmente.');
+    const h=await window.showDirectoryPicker({mode:'readwrite'});if(!await ensureFolderPermission(h))throw new Error('Permissão de gravação não concedida.');
+    folderHandle=h;document.getElementById('folderName').value=h.name||'Pasta selecionada';setStatus(`Pasta selecionada: ${h.name}`,'ok');
+  }catch(e){if(e.name!=='AbortError')setStatus(e.message||String(e),'err')}
+});
+document.getElementById('processBtn').addEventListener('click',processFile);
+</script>
+</body>
+</html>

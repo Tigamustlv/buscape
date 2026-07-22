@@ -196,6 +196,7 @@ Home
 <th>CCB</th>
 <th>Documento</th>
 <th>Nome</th>
+<th>Lastro</th>
 </tr>
 </thead>
 
@@ -269,6 +270,14 @@ async function buscar(pagina = 1){
                 <td>${item.ccb ?? ''}</td>
                 <td>${item.documento ?? ''}</td>
                 <td>${item.nome ?? ''}</td>
+                <td>
+                    ${item.lastro && item.lastro.trim() !== ""
+                        ? `<a href="/download-lastro/${item.id}">
+                            Baixar
+                        </a>`
+                        : ''
+                    }
+                </td>
             </tr>
         `;
     });
@@ -311,3 +320,6 @@ function baixarExcel(){
 
 </body>
 </html>
+
+
+
